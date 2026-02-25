@@ -1,0 +1,142 @@
+{{!
+    Template: local_dsp_certificates/certificates_page
+    Purpose:  Renders the filter form and results area for the DSP Certificate Lookup.
+              The table itself is rendered by PHP (certificates_table) and injected
+              into #dsp-cert-table-container by index.php after this template outputs.
+
+    @package  local_dsp_certificates
+    @copyright 2026 Direct Support Learning
+    @license  http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+
+{{! ── Filter form ──────────────────────────────────────────────────────────── }}
+<div class="card mb-4" id="dsp-cert-filters">
+    <div class="card-body">
+        <h6 class="card-subtitle mb-3 text-muted text-uppercase" style="font-size:.7rem;letter-spacing:.08em;">
+            {{str_filtersheading}}
+        </h6>
+
+        <form method="get" action="{{actionurl}}" id="dsp-cert-filter-form">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+
+            <div class="form-row align-items-end">
+
+                {{! Staff Member autocomplete }}
+                <div class="col-12 col-md-4 form-group mb-2">
+                    <label for="dsp-cert-user-input" class="col-form-label col-form-label-sm font-weight-bold">
+                        {{str_staffmember}}
+                    </label>
+                    {{! Hidden input carries the actual userid value on submit }}
+                    <input type="hidden" name="userid" id="dsp-cert-userid" value="{{userid}}">
+                    {{! Visible text input — populated/managed by AMD filters.js }}
+                    <input
+                        type="text"
+                        id="dsp-cert-user-input"
+                        class="form-control form-control-sm"
+                        autocomplete="off"
+                        data-dsp-autocomplete="user"
+                        value=""
+                        placeholder=""
+                    >
+                    {{! Autocomplete dropdown rendered by AMD module }}
+                    <div id="dsp-cert-user-dropdown" class="dropdown-menu w-100" style="display:none;max-height:220px;overflow-y:auto;"></div>
+                </div>
+
+                {{! Source Type }}
+                <div class="col-6 col-md-2 form-group mb-2">
+                    <label for="dsp-cert-sourcetype" class="col-form-label col-form-label-sm font-weight-bold">
+                        {{str_sourcetype}}
+                    </label>
+                    <select name="sourcetype" id="dsp-cert-sourcetype" class="form-control form-control-sm">
+                        {{#sourcetypeopts}}
+                        <option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>
+                        {{/sourcetypeopts}}
+                    </select>
+                </div>
+
+                {{! Status }}
+                <div class="col-6 col-md-2 form-group mb-2">
+                    <label for="dsp-cert-status" class="col-form-label col-form-label-sm font-weight-bold">
+                        {{str_status}}
+                    </label>
+                    <select name="status" id="dsp-cert-status" class="form-control form-control-sm">
+                        {{#statusopts}}
+                        <option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>
+                        {{/statusopts}}
+                    </select>
+                </div>
+
+                {{! Expires Before }}
+                <div class="col-6 col-md-2 form-group mb-2">
+                    <label for="dsp-cert-expiresbefore" class="col-form-label col-form-label-sm font-weight-bold">
+                        {{str_expiresbefore}}
+                    </label>
+                    <input
+                        type="date"
+                        name="expiresbefore"
+                        id="dsp-cert-expiresbefore"
+                        class="form-control form-control-sm"
+                        value="{{expiresbefore}}"
+                    >
+                </div>
+
+                {{! Suspended }}
+                <div class="col-6 col-md-2 form-group mb-2">
+                    <label for="dsp-cert-suspended" class="col-form-label col-form-label-sm font-weight-bold">
+                        {{str_suspended}}
+                    </label>
+                    <select name="suspended" id="dsp-cert-suspended" class="form-control form-control-sm">
+                        {{#suspendedopts}}
+                        <option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>
+                        {{/suspendedopts}}
+                    </select>
+                </div>
+
+            </div>{{! /form-row }}
+
+            <div class="d-flex gap-2 mt-1">
+                <button type="submit" class="btn btn-primary btn-sm">{{str_search}}</button>
+                <a href="{{actionurl}}" class="btn btn-secondary btn-sm">{{str_clear}}</a>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+{{! ── Results area ─────────────────────────────────────────────────────────── }}
+{{#hasresults}}
+<div id="dsp-cert-results">
+
+    {{! Results bar: user name + action buttons }}
+    <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+        <div class="font-weight-bold" style="font-size:1.05rem;">
+            {{targetusername}}
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{csvurl}}" class="btn btn-sm btn-outline-secondary">
+                <i class="fa fa-file-text-o" aria-hidden="true"></i>
+                {{str_exportcsv}}
+            </a>
+            <a href="{{downloadurl}}" class="btn btn-sm btn-outline-primary">
+                <i class="fa fa-download" aria-hidden="true"></i>
+                {{str_downloadall}}
+            </a>
+        </div>
+    </div>
+
+    {{! Table container — populated by PHP after this template renders }}
+    <div id="dsp-cert-table-container" class="table-responsive"></div>
+
+</div>
+{{/hasresults}}
+
+{{! ── Empty state (no user selected) ──────────────────────────────────────── }}
+{{^hasresults}}
+<div class="card text-center py-5" id="dsp-cert-empty">
+    <div class="card-body">
+        <p class="text-muted mb-1" style="font-size:2rem;">&#128203;</p>
+        <h5 class="card-title">{{str_noselectuser}}</h5>
+        <p class="card-text text-muted">{{str_noselectuserdesc}}</p>
+    </div>
+</div>
+{{/hasresults}}
