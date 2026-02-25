@@ -37,7 +37,7 @@ require_capability('local/dsp_certificates:view', $context);
 
 // ── Params & sesskey validation ───────────────────────────────────────────────
 $userid        = required_param('userid',       PARAM_INT);
-$sesskey       = required_param('sesskey',      PARAM_RAW);
+$sesskey       = required_param('sesskey',      PARAM_ALPHANUM);
 $sourcetype    = optional_param('sourcetype',   '',  PARAM_ALPHA);
 $status        = optional_param('status',       '',  PARAM_ALPHA);
 $expiresbefore = optional_param('expiresbefore','',  PARAM_TEXT);
@@ -88,8 +88,9 @@ if (!class_exists('ZipArchive')) {
 }
 
 $zip      = new ZipArchive();
-$tmpfile  = tempnam(sys_get_temp_dir(), 'dsp_certs_');
-$opened   = $zip->open($tmpfile, ZipArchive::OVERWRITE);
+$tmpdir   = make_temp_directory('local_dsp_certificates');
+$tmpfile  = $tmpdir . '/' . uniqid('dsp_certs_', true) . '.zip';
+$opened   = $zip->open($tmpfile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
 if ($opened !== true) {
     throw new \moodle_exception('errorzipfailed', 'local_dsp_certificates');

@@ -24,6 +24,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+// Privacy API.
+$string['privacy:metadata'] = 'The DSP Certificate Lookup plugin does not store any personal data. It is a read-only reporting tool that displays data held by Moodle Workplace core subsystems (tool_certificate, tool_tenant). PDF downloads are retrieved from the local Moodle file store only — no data is transmitted externally.';
+
 // Plugin identity.
 $string['pluginname']          = 'DSP Certificate Lookup';
 $string['plugindescription']   = 'Find, verify, and download certificates for staff members in your agency.';
