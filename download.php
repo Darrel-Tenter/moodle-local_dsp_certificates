@@ -17,8 +17,9 @@
 /**
  * DSP Certificate Lookup — zip download endpoint.
  *
- * Fetches all certificate PDFs for a given user, bundles them into a .zip,
- * and streams the archive to the browser.
+ * Retrieves all certificate PDFs for a given user directly from Moodle's
+ * file store using the File API, bundles them into a .zip, and streams
+ * the archive to the browser. No external HTTP requests are made.
  *
  * @package   local_dsp_certificates
  * @copyright 2026 Direct Support Learning
@@ -36,19 +37,19 @@ $context = \core\context\system::instance();
 require_capability('local/dsp_certificates:view', $context);
 
 // ── Params & sesskey validation ───────────────────────────────────────────────
-$userid        = required_param('userid',       PARAM_INT);
-$sesskey       = required_param('sesskey',      PARAM_ALPHANUM);
-$sourcetype    = optional_param('sourcetype',   '',  PARAM_ALPHA);
-$status        = optional_param('status',       '',  PARAM_ALPHA);
-$expiresbefore = optional_param('expiresbefore','',  PARAM_TEXT);
-$suspended     = optional_param('suspended',    '0', PARAM_TEXT);
+$userid        = required_param('userid',        PARAM_INT);
+$sesskey       = required_param('sesskey',       PARAM_ALPHANUM);
+$sourcetype    = optional_param('sourcetype',    '',  PARAM_ALPHA);
+$status        = optional_param('status',        '',  PARAM_ALPHA);
+$expiresbefore = optional_param('expiresbefore', '',  PARAM_TEXT);
+$suspended     = optional_param('suspended',     '0', PARAM_TEXT);
 
 // Validate sesskey to prevent CSRF.
 if (!confirm_sesskey($sesskey)) {
     throw new \moodle_exception('invalidsesskey');
 }
 
-// Sanitise filter values.
+// Sanitise filter values to known-good options only.
 $sourcetype = in_array($sourcetype, ['course', 'certification', '']) ? $sourcetype : '';
 $status     = in_array($status,     ['valid',  'expired',        '']) ? $status     : '';
 $suspended  = in_array($suspended,  ['0', '1', ''])                   ? $suspended  : '0';
@@ -75,58 +76,68 @@ $targetuser = \core_user::get_user($userid, 'id, firstname, lastname', MUST_EXIS
 $records    = $helper->get_user_certificates($userid, $filters);
 
 if (empty($records)) {
-    // Redirect back to index with no results rather than serving an empty zip.
     redirect(
         new moodle_url('/local/dsp_certificates/index.php', ['userid' => $userid]),
         get_string('noresults', 'local_dsp_certificates')
     );
 }
 
-// ── Build zip ─────────────────────────────────────────────────────────────────
+// ── Build zip using Moodle File API ──────────────────────────────────────────
 if (!class_exists('ZipArchive')) {
     throw new \moodle_exception('errorzipfailed', 'local_dsp_certificates');
 }
 
-$zip      = new ZipArchive();
-$tmpdir   = make_temp_directory('local_dsp_certificates');
-$tmpfile  = $tmpdir . '/' . uniqid('dsp_certs_', true) . '.zip';
-$opened   = $zip->open($tmpfile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+$zip     = new ZipArchive();
+$tmpdir  = make_temp_directory('local_dsp_certificates');
+$tmpfile = $tmpdir . '/' . uniqid('dsp_certs_', true) . '.zip';
+$opened  = $zip->open($tmpfile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
 if ($opened !== true) {
     throw new \moodle_exception('errorzipfailed', 'local_dsp_certificates');
 }
 
-$errors = 0;
+// Certificate PDFs are stored in Moodle's file store under the system context.
+// Verified against production data:
+//   component = 'tool_certificate'
+//   filearea  = 'issues'
+//   itemid    = mdl_tool_certificate_issues.id
+//   filepath  = '/'
+//   filename  = '{code}.pdf'
+$fs           = get_file_storage();
+$syscontextid = \core\context\system::instance()->id;
+$errors       = 0;
 
 foreach ($records as $record) {
-    $pdfurl  = certificate_helper::pdf_url($record)->out(false);
+    $file = $fs->get_file(
+        $syscontextid,
+        'tool_certificate',
+        'issues',
+        (int) $record->id,
+        '/',
+        $record->code . '.pdf'
+    );
 
-    // Fetch the PDF via Moodle's curl wrapper (respects SSL settings,
-    // proxy config, and internal auth — preferred over raw file_get_contents).
-    $curl    = new \curl();
-    $curl->setopt(['CURLOPT_RETURNTRANSFER' => true]);
-    $pdfdata = $curl->get($pdfurl);
-
-    if ($curl->get_errno() || empty($pdfdata)) {
+    if (!$file || $file->is_directory()) {
         $errors++;
         continue;
     }
 
-    // Build a human-readable filename for each PDF inside the zip.
+    // Build a descriptive filename for each PDF entry inside the zip.
     // Pattern: LASTNAME_FIRSTNAME_SOURCENAME_DATEISSUED.pdf
     $sourcepart = clean_filename($record->sourcename ?? $record->templatename);
     $datepart   = date('Y-m-d', $record->timecreated);
     $pdfname    = clean_filename(
-        $targetuser->lastname . '_' . $targetuser->firstname . '_' . $sourcepart . '_' . $datepart . '.pdf'
+        $targetuser->lastname . '_' . $targetuser->firstname
+        . '_' . $sourcepart . '_' . $datepart . '.pdf'
     );
 
-    $zip->addFromString($pdfname, $pdfdata);
+    $zip->addFromString($pdfname, $file->get_content());
 }
 
 $zip->close();
 
 if ($errors > 0 && filesize($tmpfile) < 22) {
-    // Zip is empty — all fetches failed.
+    // Zip is empty — all file lookups failed.
     @unlink($tmpfile);
     throw new \moodle_exception('errorpdffailed', 'local_dsp_certificates');
 }
