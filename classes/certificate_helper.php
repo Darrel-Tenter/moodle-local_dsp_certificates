@@ -115,11 +115,9 @@ class certificate_helper {
             }
         }
 
-        if ($where) {
-            $fromsql .= ' WHERE ' . implode(' AND ', $where);
-        }
+        $wheresql = implode(' AND ', $where);
 
-        return [$fromsql, $params];
+        return [$fromsql, $wheresql, $params];
     }
 
     /**
@@ -194,9 +192,8 @@ class certificate_helper {
      * @return array [$sql, $params]
      */
     public function get_table_sql(array $filters): array {
-        [$fromsql, $params] = $this->build_base_sql($filters);
-        $sql = 'SELECT ' . self::select_fields() . $fromsql;
-        return [$sql, $params];
+        [$fromsql, $wheresql, $params] = $this->build_base_sql($filters);
+        return [self::select_fields(), $fromsql, $wheresql, $params];
     }
 
     /**
@@ -210,9 +207,9 @@ class certificate_helper {
         global $DB;
 
         $filters['userid'] = $userid;
-        [$fromsql, $params] = $this->build_base_sql($filters);
+        [$fromsql, $wheresql, $params] = $this->build_base_sql($filters);
 
-        $sql = 'SELECT ' . self::select_fields() . $fromsql . ' ORDER BY ci.timecreated DESC';
+        $sql = 'SELECT ' . self::select_fields() . $fromsql . ' WHERE ' . $wheresql . ' ORDER BY ci.timecreated DESC';
 
         return $DB->get_records_sql($sql, $params);
     }
@@ -301,7 +298,9 @@ class certificate_helper {
         }
 
         $sql = "
-            SELECT u.id, u.firstname, u.lastname
+            SELECT u.id, u.firstname, u.lastname,
+                   u.firstnamephonetic, u.lastnamephonetic,
+                   u.middlename, u.alternatename
               FROM {user} u
               JOIN {tool_tenant_user} tu_user   ON tu_user.userid = u.id
               JOIN {tool_tenant_user} tu_viewer

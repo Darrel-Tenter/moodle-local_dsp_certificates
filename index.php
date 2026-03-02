@@ -79,12 +79,12 @@ if ($userid > 0) {
 }
 
 // ── AMD module init ───────────────────────────────────────────────────────────
-// Pass tenant users list to the autocomplete AMD module.
-$tenantusers = $helper->get_tenant_users();
+// Pass only minimal data — the user list is fetched via AJAX to avoid
+// exceeding the js_call_amd 1024-character argument limit.
 $PAGE->requires->js_call_amd('local_dsp_certificates/filters', 'init', [[
-    'tenantUsers'    => $tenantusers,
-    'selectedUserId' => $userid,
-    'strings'        => [
+    'selectedUserId'   => $userid,
+    'selectedUserName' => $targetuser ? fullname($targetuser) : '',
+    'strings'          => [
         'placeholder' => get_string('filterstaffmember_placeholder', 'local_dsp_certificates'),
     ],
 ]]);

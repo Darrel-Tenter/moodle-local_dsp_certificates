@@ -88,16 +88,11 @@ class certificates_table extends \table_sql {
         $this->pageable(false);
 
         // Build and set SQL.
-        [$sql, $params] = $helper->get_table_sql($filters);
+        // get_table_sql returns [fields, fromsql, wheresql, params] ready for set_sql().
+        [$fields, $fromsql, $wheresql, $params] = $helper->get_table_sql($filters);
 
-        // table_sql expects the SELECT fields and the FROM...WHERE separately.
-        // We split on the first FROM keyword.
-        $frompos  = stripos($sql, 'FROM');
-        $fields   = trim(substr($sql, strlen('SELECT'), $frompos - strlen('SELECT')));
-        $fromsql  = trim(substr($sql, $frompos));
-
-        $this->set_sql($fields, $fromsql, '1=1', $params);
-        $this->set_count_sql('SELECT COUNT(1) ' . $fromsql, $params);
+        $this->set_sql($fields, $fromsql, $wheresql, $params);
+        $this->set_count_sql('SELECT COUNT(1) ' . $fromsql . ' WHERE ' . $wheresql, $params);
     }
 
     /**

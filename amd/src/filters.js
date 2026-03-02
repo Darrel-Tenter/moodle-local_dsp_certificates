@@ -16,40 +16,35 @@
 /**
  * AMD module: DSP Certificate Lookup — filter form behaviour.
  *
- * Responsibilities:
- *  1. Populate the staff member autocomplete with tenant users passed from PHP.
- *  2. Restore the selected user's name in the visible text input on page load.
- *  3. Clear the hidden userid field when the text input is cleared.
- *
- * No external dependencies beyond core AMD modules.
+ * Handles the staff member autocomplete. User search queries are sent via
+ * Moodle AJAX to local_dsp_certificates_search_users, which returns
+ * tenant-scoped matches. This avoids passing the full user list inline
+ * via js_call_amd (which has a 1024-character argument limit).
  *
  * @module    local_dsp_certificates/filters
  * @copyright 2026 Direct Support Learning
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define(['core/log'], function(Log) {
+define(['core/ajax', 'core/log'], function(Ajax, Log) {
 
     'use strict';
-
-    /** @type {Array}  Full list of tenant users: [{id, fullname}, ...] */
-    let tenantUsers = [];
 
     /** @type {number} Currently selected user ID (0 = none). */
     let selectedUserId = 0;
 
+    /** @type {number|null} Debounce timer handle. */
+    let debounceTimer = null;
+
     /**
      * Initialise the filters module.
      *
-     * Called from index.php via $PAGE->requires->js_call_amd().
-     *
      * @param {Object} config
-     * @param {Array}  config.tenantUsers    Array of {id, fullname} objects.
-     * @param {number} config.selectedUserId Currently selected userid (from GET param).
-     * @param {Object} config.strings        Localised strings from PHP.
+     * @param {number} config.selectedUserId   Currently selected userid (from GET param).
+     * @param {string} config.selectedUserName Display name of the selected user.
+     * @param {Object} config.strings          Localised strings from PHP.
      */
     function init(config) {
-        tenantUsers    = config.tenantUsers    || [];
         selectedUserId = config.selectedUserId || 0;
 
         const textInput   = document.getElementById('dsp-cert-user-input');
@@ -61,56 +56,49 @@ define(['core/log'], function(Log) {
             return;
         }
 
-        // ── Set placeholder ──────────────────────────────────────────────────
+        // Set placeholder.
         if (config.strings && config.strings.placeholder) {
             textInput.placeholder = config.strings.placeholder;
         }
 
-        // ── Restore selected user name on page load ──────────────────────────
-        if (selectedUserId > 0) {
-            const match = tenantUsers.find(u => u.id === selectedUserId);
-            if (match) {
-                textInput.value = match.fullname;
-            }
+        // Restore selected user name on page load (after a search was submitted).
+        if (config.selectedUserName) {
+            textInput.value = config.selectedUserName;
         }
 
-        // ── Autocomplete: filter on input ─────────────────────────────────────
+        // Autocomplete: debounced AJAX search on input.
         textInput.addEventListener('input', function() {
-            const query = this.value.trim().toLowerCase();
+            const query = this.value.trim();
 
-            // Clear the hidden userid if the text changes.
+            // Clear the hidden userid when text changes.
             hiddenInput.value = '0';
             selectedUserId    = 0;
+
+            clearTimeout(debounceTimer);
 
             if (query.length < 1) {
                 closeDropdown(dropdown);
                 return;
             }
 
-            const matches = tenantUsers.filter(u =>
-                u.fullname.toLowerCase().includes(query)
-            ).slice(0, 20); // Cap at 20 results for performance.
-
-            if (matches.length === 0) {
-                closeDropdown(dropdown);
-                return;
-            }
-
-            renderDropdown(dropdown, matches, textInput, hiddenInput);
+            // Debounce — wait 250ms after the user stops typing.
+            debounceTimer = setTimeout(function() {
+                searchUsers(query, dropdown, textInput, hiddenInput);
+            }, 250);
         });
 
-        // ── Close dropdown on outside click ───────────────────────────────────
+        // Close dropdown on outside click.
         document.addEventListener('click', function(e) {
             if (!textInput.contains(e.target) && !dropdown.contains(e.target)) {
                 closeDropdown(dropdown);
             }
         });
 
-        // ── Keyboard navigation ───────────────────────────────────────────────
+        // Keyboard navigation.
         textInput.addEventListener('keydown', function(e) {
-            const items = dropdown.querySelectorAll('.dropdown-item');
+            const items  = dropdown.querySelectorAll('.dropdown-item');
             const active = dropdown.querySelector('.dropdown-item.active');
-            let idx = Array.from(items).indexOf(active);
+            let idx      = Array.from(items).indexOf(active);
 
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -130,18 +118,44 @@ define(['core/log'], function(Log) {
     }
 
     /**
-     * Render the dropdown list with filtered user matches.
+     * Search for users via Moodle AJAX and render the dropdown.
      *
+     * @param {string}      query
      * @param {HTMLElement} dropdown
-     * @param {Array}       matches
      * @param {HTMLElement} textInput
      * @param {HTMLElement} hiddenInput
      */
-    function renderDropdown(dropdown, matches, textInput, hiddenInput) {
+    function searchUsers(query, dropdown, textInput, hiddenInput) {
+        Ajax.call([{
+            methodname: 'local_dsp_certificates_search_users',
+            args: {query: query},
+            done: function(users) {
+                if (!users || users.length === 0) {
+                    closeDropdown(dropdown);
+                    return;
+                }
+                renderDropdown(dropdown, users, textInput, hiddenInput);
+            },
+            fail: function(err) {
+                Log.warn('local_dsp_certificates/filters: user search failed', err);
+                closeDropdown(dropdown);
+            }
+        }]);
+    }
+
+    /**
+     * Render the dropdown list with user matches.
+     *
+     * @param {HTMLElement} dropdown
+     * @param {Array}       users
+     * @param {HTMLElement} textInput
+     * @param {HTMLElement} hiddenInput
+     */
+    function renderDropdown(dropdown, users, textInput, hiddenInput) {
         dropdown.innerHTML = '';
 
-        matches.forEach(function(user) {
-            const item = document.createElement('button');
+        users.forEach(function(user) {
+            const item       = document.createElement('button');
             item.type        = 'button';
             item.className   = 'dropdown-item';
             item.textContent = user.fullname;
