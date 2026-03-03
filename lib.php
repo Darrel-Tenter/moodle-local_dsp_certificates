@@ -17,10 +17,6 @@
 /**
  * Library functions for local_dsp_certificates.
  *
- * Registers the plugin as a child node under the shared "Agency Management"
- * primary navigation parent. Other DSL plugins contribute sibling nodes to
- * the same parent label — Moodle merges them into a single dropdown.
- *
  * @package   local_dsp_certificates
  * @copyright 2026 Direct Support Learning
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -29,50 +25,33 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Extend the primary navigation to add Agency Management > DSP Certificates.
+ * Extend navigation with DSP Certificate Lookup link.
  *
- * Only injects the node if the current user holds the view capability.
- * The parent node "Agency Management" is shared across DSL plugins — each
- * plugin contributes its own child independently.
+ * Matches the pattern used by local_dsl_isp on this Workplace instance.
  *
- * @param \core\navigation\views\primary $primarynav
- * @return void
+ * @param global_navigation $navigation The global navigation object.
  */
-function local_dsp_certificates_extend_primary_navigation(\core\navigation\views\primary $primarynav): void {
-    global $USER;
+function local_dsp_certificates_extend_navigation(global_navigation $navigation): void {
+    if (!isloggedin() || isguestuser()) {
+        return;
+    }
 
-    // Only show to users with the view capability.
-    $context = \core\context\system::instance();
+    $context = context_system::instance();
     if (!has_capability('local/dsp_certificates:view', $context)) {
         return;
     }
 
-    $parentlabel = get_string('agencymanagement', 'local_dsp_certificates');
-    $pluginurl   = new moodle_url('/local/dsp_certificates/index.php');
-    $childlabel  = get_string('pluginname', 'local_dsp_certificates');
-
-    // Find or create the shared parent node.
-    $parentnode = $primarynav->find('dsl_agency_management', navigation_node::TYPE_CONTAINER);
-
-    if (!$parentnode) {
-        $parentnode = navigation_node::create(
-            $parentlabel,
-            null,
-            navigation_node::TYPE_CONTAINER,
-            $parentlabel,
-            'dsl_agency_management'
-        );
-        $primarynav->add_node($parentnode);
-    }
-
-    // Add this plugin's child node.
-    $childnode = navigation_node::create(
-        $childlabel,
-        $pluginurl,
+    $url  = new moodle_url('/local/dsp_certificates/index.php');
+    $node = navigation_node::create(
+        get_string('pluginname', 'local_dsp_certificates'),
+        $url,
         navigation_node::TYPE_CUSTOM,
-        $childlabel,
-        'dsl_certificates'
+        null,
+        'local_dsp_certificates',
+        new pix_icon('i/report', '')
     );
 
-    $parentnode->add_node($childnode);
+    $node->showinflatnavigation = true;
+
+    $navigation->add_node($node);
 }

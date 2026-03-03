@@ -43,7 +43,7 @@ $string['agencymanagement']    = 'Agency Management';
 // Filters.
 $string['filtersheading']      = 'Search Filters';
 $string['filterstaffmember']   = 'Staff Member';
-$string['filterstaffmember_placeholder'] = 'Type to search staff';
+$string['filterstaffmember_placeholder'] = 'Type to search staff\u2026';
 $string['filtersourcetype']    = 'Source Type';
 $string['filterstatus']        = 'Status';
 $string['filterexpiresbefore'] = 'Expires Before';
