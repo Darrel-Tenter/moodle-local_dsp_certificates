@@ -76,9 +76,9 @@ class external extends \core_external\external_api {
             return array_slice($users, 0, 20);
         }
 
-        $lower   = core_text::strtolower($query);
+        $lower   = \core_text::strtolower($query);
         $matches = array_filter($users, function($u) use ($lower) {
-            return strpos(core_text::strtolower($u['fullname']), $lower) !== false;
+            return strpos(\core_text::strtolower($u['fullname']), $lower) !== false;
         });
 
         return array_slice(array_values($matches), 0, 20);
