@@ -63,7 +63,7 @@ class certificate_helper {
 
         // Core joins — always present.
         $fromsql = "
-            FROM {tool_certificate_issues} ci
+            {tool_certificate_issues} ci
             JOIN {tool_certificate_templates} tt ON tt.id = ci.templateid
             JOIN {user} u ON u.id = ci.userid
             JOIN {tool_tenant_user} tu_user   ON tu_user.userid = u.id
@@ -209,7 +209,7 @@ class certificate_helper {
         $filters['userid'] = $userid;
         [$fromsql, $wheresql, $params] = $this->build_base_sql($filters);
 
-        $sql = 'SELECT ' . self::select_fields() . $fromsql . ' WHERE ' . $wheresql . ' ORDER BY ci.timecreated DESC';
+        $sql = 'SELECT ' . self::select_fields() . ' FROM ' . $fromsql . ' WHERE ' . $wheresql . ' ORDER BY ci.timecreated DESC';
 
         return $DB->get_records_sql($sql, $params);
     }

@@ -92,7 +92,7 @@ class certificates_table extends \table_sql {
         [$fields, $fromsql, $wheresql, $params] = $helper->get_table_sql($filters);
 
         $this->set_sql($fields, $fromsql, $wheresql, $params);
-        $this->set_count_sql('SELECT COUNT(1) ' . $fromsql . ' WHERE ' . $wheresql, $params);
+        $this->set_count_sql('SELECT COUNT(1) FROM ' . $fromsql . ' WHERE ' . $wheresql, $params);
     }
 
     /**
