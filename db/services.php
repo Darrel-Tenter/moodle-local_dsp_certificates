@@ -26,8 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $functions = [
     'local_dsp_certificates_search_users' => [
-        'classname'     => 'local_dsp_certificates\external',
-        'methodname'    => 'search_users',
+        'classname'     => 'local_dsp_certificates\external\search_users',
         'description'   => 'Search for users within the viewer\'s tenant for the certificate lookup autocomplete.',
         'type'          => 'read',
         'ajax'          => true,

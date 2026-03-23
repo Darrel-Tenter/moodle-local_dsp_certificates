@@ -39,9 +39,9 @@ require_capability('local/dsp_certificates:view', $context);
 // ── Params & sesskey validation ───────────────────────────────────────────────
 $userid        = required_param('userid',        PARAM_INT);
 $sesskey       = required_param('sesskey',       PARAM_ALPHANUM);
-$sourcetype    = optional_param('sourcetype',    '',  PARAM_ALPHA);
+$sourceType    = optional_param('sourcetype',    '',  PARAM_ALPHA);
 $status        = optional_param('status',        '',  PARAM_ALPHA);
-$expiresbefore = optional_param('expiresbefore', '',  PARAM_TEXT);
+$expiresBefore = optional_param('expiresbefore', '',  PARAM_TEXT);
 $suspended     = optional_param('suspended',     '0', PARAM_TEXT);
 
 // Validate sesskey to prevent CSRF.
@@ -50,18 +50,18 @@ if (!confirm_sesskey($sesskey)) {
 }
 
 // Sanitise filter values to known-good options only.
-$sourcetype = in_array($sourcetype, ['course', 'certification', '']) ? $sourcetype : '';
-$status     = in_array($status,     ['valid',  'expired',        '']) ? $status     : '';
-$suspended  = in_array($suspended,  ['0', '1', ''])                   ? $suspended  : '0';
+$sourceType    = in_array($sourceType, ['course', 'certification', '']) ? $sourceType : '';
+$status        = in_array($status,     ['valid',  'expired',        '']) ? $status     : '';
+$suspended     = in_array($suspended,  ['0', '1', ''])                   ? $suspended  : '0';
 
-if ($expiresbefore && !strtotime($expiresbefore)) {
-    $expiresbefore = '';
+if ($expiresBefore && !strtotime($expiresBefore)) {
+    $expiresBefore = '';
 }
 
 $filters = [
-    'sourcetype'    => $sourcetype,
+    'sourcetype'    => $sourceType,
     'status'        => $status,
-    'expiresbefore' => $expiresbefore,
+    'expiresbefore' => $expiresBefore,
     'suspended'     => $suspended,
 ];
 
@@ -72,7 +72,7 @@ if (!$helper->user_in_tenant($userid)) {
     throw new \moodle_exception('errornouser', 'local_dsp_certificates');
 }
 
-$targetuser = \core_user::get_user($userid, 'id, firstname, lastname', MUST_EXIST);
+$targetUser = \core_user::get_user($userid, 'id, firstname, lastname', MUST_EXIST);
 $records    = $helper->get_user_certificates($userid, $filters);
 
 if (empty($records)) {
@@ -88,9 +88,9 @@ if (!class_exists('ZipArchive')) {
 }
 
 $zip     = new ZipArchive();
-$tmpdir  = make_temp_directory('local_dsp_certificates');
-$tmpfile = $tmpdir . '/' . uniqid('dsp_certs_', true) . '.zip';
-$opened  = $zip->open($tmpfile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+$tmpDir  = make_temp_directory('local_dsp_certificates');
+$tmpFile = $tmpDir . '/' . uniqid('dsp_certs_', true) . '.zip';
+$opened  = $zip->open($tmpFile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
 if ($opened !== true) {
     throw new \moodle_exception('errorzipfailed', 'local_dsp_certificates');
@@ -104,12 +104,12 @@ if ($opened !== true) {
 //   filepath  = '/'
 //   filename  = '{code}.pdf'
 $fs           = get_file_storage();
-$syscontextid = \core\context\system::instance()->id;
+$sysContextId = \core\context\system::instance()->id;
 $errors       = 0;
 
 foreach ($records as $record) {
     $file = $fs->get_file(
-        $syscontextid,
+        $sysContextId,
         'tool_certificate',
         'issues',
         (int) $record->id,
@@ -124,36 +124,36 @@ foreach ($records as $record) {
 
     // Build a descriptive filename for each PDF entry inside the zip.
     // Pattern: LASTNAME_FIRSTNAME_SOURCENAME_DATEISSUED.pdf
-    $sourcepart = clean_filename($record->sourcename ?? $record->templatename);
-    $datepart   = date('Y-m-d', $record->timecreated);
-    $pdfname    = clean_filename(
-        $targetuser->lastname . '_' . $targetuser->firstname
-        . '_' . $sourcepart . '_' . $datepart . '.pdf'
+    $sourcePart = clean_filename($record->sourcename ?? $record->templatename);
+    $datePart   = date('Y-m-d', $record->timecreated);
+    $pdfName    = clean_filename(
+        $targetUser->lastname . '_' . $targetUser->firstname
+        . '_' . $sourcePart . '_' . $datePart . '.pdf'
     );
 
-    $zip->addFromString($pdfname, $file->get_content());
+    $zip->addFromString($pdfName, $file->get_content());
 }
 
 $zip->close();
 
-if ($errors > 0 && filesize($tmpfile) < 22) {
+if ($errors > 0 && filesize($tmpFile) < 22) {
     // Zip is empty — all file lookups failed.
-    @unlink($tmpfile);
+    @unlink($tmpFile);
     throw new \moodle_exception('errorpdffailed', 'local_dsp_certificates');
 }
 
 // ── Stream zip to browser ─────────────────────────────────────────────────────
-$zipfilename = clean_filename(
-    $targetuser->lastname . '_' . $targetuser->firstname . '_certificates.zip'
+$zipFilename = clean_filename(
+    $targetUser->lastname . '_' . $targetUser->firstname . '_certificates.zip'
 );
 
 header('Content-Type: application/zip');
-header('Content-Disposition: attachment; filename="' . $zipfilename . '"');
-header('Content-Length: ' . filesize($tmpfile));
+header('Content-Disposition: attachment; filename="' . $zipFilename . '"');
+header('Content-Length: ' . filesize($tmpFile));
 header('Pragma: no-cache');
 header('Expires: 0');
 
-readfile($tmpfile);
+readfile($tmpFile);
 
-@unlink($tmpfile);
+@unlink($tmpFile);
 exit;

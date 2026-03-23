@@ -34,8 +34,6 @@
 
 namespace local_dsp_certificates\privacy;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Privacy provider declaring that this plugin stores no personal data.
  *

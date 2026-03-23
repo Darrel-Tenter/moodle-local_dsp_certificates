@@ -24,8 +24,6 @@
 
 namespace local_dsp_certificates;
 
-defined('MOODLE_INTERNAL') || die();
-
 global $CFG;
 require_once($CFG->libdir . '/tablelib.php');
 
@@ -88,11 +86,11 @@ class certificates_table extends \table_sql {
         $this->pageable(false);
 
         // Build and set SQL.
-        // get_table_sql returns [fields, fromsql, wheresql, params] ready for set_sql().
-        [$fields, $fromsql, $wheresql, $params] = $helper->get_table_sql($filters);
+        // Returns [fields, fromSql, whereSql, params] ready for set_sql().
+        [$fields, $fromSql, $whereSql, $params] = $helper->get_table_sql($filters);
 
-        $this->set_sql($fields, $fromsql, $wheresql, $params);
-        $this->set_count_sql('SELECT COUNT(1) FROM ' . $fromsql . ' WHERE ' . $wheresql, $params);
+        $this->set_sql($fields, $fromSql, $whereSql, $params);
+        $this->set_count_sql('SELECT COUNT(1) FROM ' . $fromSql . ' WHERE ' . $whereSql, $params);
     }
 
     /**
@@ -105,10 +103,10 @@ class certificates_table extends \table_sql {
      * @return string HTML
      */
     public function col_sourcetype(\stdClass $row): string {
-        $typelabel = get_string('source' . $row->sourcetype, 'local_dsp_certificates');
-        $typehtml  = \html_writer::tag('div', s($typelabel), ['class' => 'small text-muted text-uppercase']);
-        $namehtml  = \html_writer::tag('div', s($row->sourcename ?? $row->templatename), ['class' => 'font-weight-medium']);
-        return $typehtml . $namehtml;
+        $typeLabel = get_string('source' . $row->sourcetype, 'local_dsp_certificates');
+        $typeHtml  = \html_writer::tag('div', s($typeLabel), ['class' => 'small text-muted text-uppercase']);
+        $nameHtml  = \html_writer::tag('div', s($row->sourcename ?? $row->templatename), ['class' => 'font-weight-medium']);
+        return $typeHtml . $nameHtml;
     }
 
     /**
@@ -120,13 +118,13 @@ class certificates_table extends \table_sql {
     public function col_status(\stdClass $row): string {
         $key = certificate_helper::status_key($row);
 
-        $classmap = [
+        $classMap = [
             'statusvalid'    => 'text-success font-weight-bold',
             'statusexpired'  => 'text-danger font-weight-bold',
             'statusnoexpiry' => 'text-muted',
         ];
 
-        $class = $classmap[$key] ?? 'text-muted';
+        $class = $classMap[$key] ?? 'text-muted';
         return \html_writer::tag('span', get_string($key, 'local_dsp_certificates'), ['class' => $class]);
     }
 

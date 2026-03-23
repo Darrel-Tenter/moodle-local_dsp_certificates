@@ -24,7 +24,6 @@
 
 namespace local_dsp_certificates;
 
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Provides data access methods for the DSP Certificate Lookup plugin.
@@ -36,15 +35,15 @@ defined('MOODLE_INTERNAL') || die();
 class certificate_helper {
 
     /** @var int The session user ID (the Tenant Admin running the report). */
-    private int $viewerid;
+    private int $viewerId;
 
     /**
      * Constructor.
      *
      * @param int $viewerid The userid of the admin running the report.
      */
-    public function __construct(int $viewerid) {
-        $this->viewerid = $viewerid;
+    public function __construct(int $viewerId) {
+        $this->viewerId = $viewerId;
     }
 
     /**
@@ -59,10 +58,10 @@ class certificate_helper {
     private function build_base_sql(array $filters): array {
         global $DB;
 
-        $params = ['viewerid' => $this->viewerid];
+        $params = ['viewerid' => $this->viewerId];
 
         // Core joins — always present.
-        $fromsql = "
+        $fromSql = "
             {tool_certificate_issues} ci
             JOIN {tool_certificate_templates} tt ON tt.id = ci.templateid
             JOIN {user} u ON u.id = ci.userid
@@ -89,10 +88,10 @@ class certificate_helper {
         }
 
         // Source type filter.
-        $sourcetype = $filters['sourcetype'] ?? '';
-        if ($sourcetype === 'course') {
+        $sourceType = $filters['sourcetype'] ?? '';
+        if ($sourceType === 'course') {
             $where[] = "ci.component = 'mod_coursecertificate'";
-        } else if ($sourcetype === 'certification') {
+        } else if ($sourceType === 'certification') {
             $where[] = "ci.component = 'tool_dynamicrule'";
         }
 
@@ -115,9 +114,9 @@ class certificate_helper {
             }
         }
 
-        $wheresql = implode(' AND ', $where);
+        $whereSql = implode(' AND ', $where);
 
-        return [$fromsql, $wheresql, $params];
+        return [$fromSql, $whereSql, $params];
     }
 
     /**
@@ -192,8 +191,8 @@ class certificate_helper {
      * @return array [$sql, $params]
      */
     public function get_table_sql(array $filters): array {
-        [$fromsql, $wheresql, $params] = $this->build_base_sql($filters);
-        return [self::select_fields(), $fromsql, $wheresql, $params];
+        [$fromSql, $whereSql, $params] = $this->build_base_sql($filters);
+        return [self::select_fields(), $fromSql, $whereSql, $params];
     }
 
     /**
@@ -207,9 +206,9 @@ class certificate_helper {
         global $DB;
 
         $filters['userid'] = $userid;
-        [$fromsql, $wheresql, $params] = $this->build_base_sql($filters);
+        [$fromSql, $whereSql, $params] = $this->build_base_sql($filters);
 
-        $sql = 'SELECT ' . self::select_fields() . ' FROM ' . $fromsql . ' WHERE ' . $wheresql . ' ORDER BY ci.timecreated DESC';
+        $sql = 'SELECT ' . self::select_fields() . ' FROM ' . $fromSql . ' WHERE ' . $whereSql . ' ORDER BY ci.timecreated DESC';
 
         return $DB->get_records_sql($sql, $params);
     }
@@ -236,7 +235,7 @@ class certificate_helper {
         ";
 
         return $DB->record_exists_sql($sql, [
-            'viewerid' => $this->viewerid,
+            'viewerid' => $this->viewerId,
             'userid'   => $userid,
         ]);
     }
@@ -290,9 +289,9 @@ class certificate_helper {
         global $DB;
 
         $cache = \cache::make('local_dsp_certificates', 'tenant_users');
-        $cachekey = 'tenant_users_' . $this->viewerid;
+        $cacheKey = 'tenant_users_' . $this->viewerId;
 
-        $cached = $cache->get($cachekey);
+        $cached = $cache->get($cacheKey);
         if ($cached !== false) {
             return $cached;
         }
@@ -310,7 +309,7 @@ class certificate_helper {
           ORDER BY u.lastname, u.firstname
         ";
 
-        $records = $DB->get_records_sql($sql, ['viewerid' => $this->viewerid]);
+        $records = $DB->get_records_sql($sql, ['viewerid' => $this->viewerId]);
 
         $users = [];
         foreach ($records as $r) {
@@ -320,7 +319,7 @@ class certificate_helper {
             ];
         }
 
-        $cache->set($cachekey, $users);
+        $cache->set($cacheKey, $users);
         return $users;
     }
 }
