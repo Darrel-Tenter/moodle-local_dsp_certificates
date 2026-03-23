@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * External functions for local_dsp_certificates.
+ * External function: search_users.
  *
  * Provides an AJAX endpoint for the staff member autocomplete selector.
  * Returns tenant-scoped users matching a search query.
@@ -25,23 +25,21 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_dsp_certificates;
+namespace local_dsp_certificates\external;
 
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->libdir . '/externallib.php');
+use local_dsp_certificates\certificate_helper;
 
 /**
- * External API class for the DSP Certificate Lookup autocomplete.
+ * External function to search for tenant-scoped users for the certificate lookup autocomplete.
  */
-class external extends \core_external\external_api {
+class search_users extends \core_external\external_api {
 
     /**
-     * Parameters for search_users.
+     * Describe input parameters.
      *
      * @return \external_function_parameters
      */
-    public static function search_users_parameters(): \external_function_parameters {
+    public static function execute_parameters(): \external_function_parameters {
         return new \external_function_parameters([
             'query' => new \external_value(PARAM_TEXT, 'Search string', VALUE_REQUIRED),
         ]);
@@ -57,11 +55,11 @@ class external extends \core_external\external_api {
      * @param string $query The search string.
      * @return array Array of matching users with id and fullname.
      */
-    public static function search_users(string $query): array {
+    public static function execute(string $query): array {
         global $USER;
 
         // Validate parameters.
-        $params = self::validate_parameters(self::search_users_parameters(), ['query' => $query]);
+        $params = self::validate_parameters(self::execute_parameters(), ['query' => $query]);
         $query  = trim($params['query']);
 
         // Require the view capability.
@@ -85,11 +83,11 @@ class external extends \core_external\external_api {
     }
 
     /**
-     * Return value definition for search_users.
+     * Describe return value.
      *
      * @return \external_multiple_structure
      */
-    public static function search_users_returns(): \external_multiple_structure {
+    public static function execute_returns(): \external_multiple_structure {
         return new \external_multiple_structure(
             new \external_single_structure([
                 'id'       => new \external_value(PARAM_INT,  'User ID'),

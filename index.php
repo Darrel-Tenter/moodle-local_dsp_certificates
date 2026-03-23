@@ -37,32 +37,32 @@ require_capability('local/dsp_certificates:view', $context);
 // ── Page setup ───────────────────────────────────────────────────────────────
 $PAGE->set_url(new moodle_url('/local/dsp_certificates/index.php'));
 $PAGE->set_context($context);
-$PAGE->set_pagelayout('admin');
+$PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('pagetitle', 'local_dsp_certificates'));
 $PAGE->set_heading(get_string('pageheading', 'local_dsp_certificates'));
 
 // ── Filter params ────────────────────────────────────────────────────────────
-$userid       = optional_param('userid',       0,   PARAM_INT);
-$sourcetype   = optional_param('sourcetype',   '',  PARAM_ALPHA);
-$status       = optional_param('status',       '',  PARAM_ALPHA);
-$expiresbefore= optional_param('expiresbefore','',  PARAM_TEXT);
-$suspended    = optional_param('suspended',    '0', PARAM_TEXT);
+$userid        = optional_param('userid',        0,   PARAM_INT);
+$sourceType    = optional_param('sourcetype',    '',  PARAM_ALPHA);
+$status        = optional_param('status',        '',  PARAM_ALPHA);
+$expiresBefore = optional_param('expiresbefore', '',  PARAM_TEXT);
+$suspended     = optional_param('suspended',     '0', PARAM_TEXT);
 
-// Sanitise sourcetype and status to known values only.
-$sourcetype = in_array($sourcetype, ['course', 'certification', '']) ? $sourcetype : '';
-$status     = in_array($status,     ['valid',  'expired',        '']) ? $status     : '';
-$suspended  = in_array($suspended,  ['0', '1', ''])                   ? $suspended  : '0';
+// Sanitise sourceType and status to known values only.
+$sourceType    = in_array($sourceType, ['course', 'certification', '']) ? $sourceType : '';
+$status        = in_array($status,     ['valid',  'expired',        '']) ? $status     : '';
+$suspended     = in_array($suspended,  ['0', '1', ''])                   ? $suspended  : '0';
 
-// Validate expiresbefore is a parseable date or empty.
-if ($expiresbefore && !strtotime($expiresbefore)) {
-    $expiresbefore = '';
+// Validate expiresBefore is a parseable date or empty.
+if ($expiresBefore && !strtotime($expiresBefore)) {
+    $expiresBefore = '';
 }
 
 $filters = [
     'userid'        => $userid,
-    'sourcetype'    => $sourcetype,
+    'sourcetype'    => $sourceType,
     'status'        => $status,
-    'expiresbefore' => $expiresbefore,
+    'expiresbefore' => $expiresBefore,
     'suspended'     => $suspended,
 ];
 
@@ -70,12 +70,12 @@ $filters = [
 $helper = new certificate_helper($USER->id);
 
 // Validate that the requested userid belongs to this admin's tenant.
-$targetuser = null;
+$targetUser = null;
 if ($userid > 0) {
     if (!$helper->user_in_tenant($userid)) {
         throw new \moodle_exception('errornouser', 'local_dsp_certificates');
     }
-    $targetuser = \core_user::get_user($userid, 'id, firstname, lastname', MUST_EXIST);
+    $targetUser = \core_user::get_user($userid, 'id, firstname, lastname, firstnamephonetic, lastnamephonetic, middlename, alternatename', MUST_EXIST);
 }
 
 // ── AMD module init ───────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ if ($userid > 0) {
 // exceeding the js_call_amd 1024-character argument limit.
 $PAGE->requires->js_call_amd('local_dsp_certificates/filters', 'init', [[
     'selectedUserId'   => $userid,
-    'selectedUserName' => $targetuser ? fullname($targetuser) : '',
+    'selectedUserName' => $targetUser ? fullname($targetUser) : '',
     'strings'          => [
         'placeholder' => get_string('filterstaffmember_placeholder', 'local_dsp_certificates'),
     ],
@@ -95,7 +95,7 @@ if ($export === 'csv' && $userid > 0) {
     $records = $helper->get_user_certificates($userid, $filters);
 
     $filename = clean_filename(
-        $targetuser->lastname . '_' . $targetuser->firstname . '_certificates.csv'
+        $targetUser->lastname . '_' . $targetUser->firstname . '_certificates.csv'
     );
 
     header('Content-Type: text/csv; charset=utf-8');
@@ -114,15 +114,15 @@ if ($export === 'csv' && $userid > 0) {
     ]);
 
     foreach ($records as $r) {
-        $statuskey  = certificate_helper::status_key($r);
-        $sourcetype = get_string('source' . $r->sourcetype, 'local_dsp_certificates');
-        $expires    = (empty($r->expires) || (int)$r->expires === 0)
+        $statusKey   = certificate_helper::status_key($r);
+        $sourceLabel = get_string('source' . $r->sourcetype, 'local_dsp_certificates');
+        $expires     = (empty($r->expires) || (int)$r->expires === 0)
             ? get_string('never', 'local_dsp_certificates')
             : userdate($r->expires, get_string('strftimedatetimeshort', 'langconfig'));
 
         fputcsv($out, [
-            $sourcetype . ': ' . ($r->sourcename ?? $r->templatename),
-            get_string($statuskey, 'local_dsp_certificates'),
+            $sourceLabel . ': ' . ($r->sourcename ?? $r->templatename),
+            get_string($statusKey, 'local_dsp_certificates'),
             userdate($r->timecreated, get_string('strftimedatetimeshort', 'langconfig')),
             $expires,
             (string)certificate_helper::verify_url($r),
@@ -135,7 +135,7 @@ if ($export === 'csv' && $userid > 0) {
 
 // ── Build table (only when a user is selected) ────────────────────────────────
 $table       = null;
-$resultcount = 0;
+$resultCount = 0;
 
 if ($userid > 0) {
     $table = new certificates_table('dsp_certificates_table', $filters, $helper);
@@ -149,40 +149,40 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('pageheading', 'local_dsp_certificates'));
 
 // ── Filter form ───────────────────────────────────────────────────────────────
-$baseurl     = new moodle_url('/local/dsp_certificates/index.php');
-$downloadurl = new moodle_url('/local/dsp_certificates/download.php', array_filter([
+$baseUrl     = new moodle_url('/local/dsp_certificates/index.php');
+$downloadUrl = new moodle_url('/local/dsp_certificates/download.php', array_filter([
     'userid'        => $userid,
-    'sourcetype'    => $sourcetype,
+    'sourcetype'    => $sourceType,
     'status'        => $status,
-    'expiresbefore' => $expiresbefore,
+    'expiresbefore' => $expiresBefore,
     'suspended'     => $suspended,
     'sesskey'       => sesskey(),
 ]));
-$csvurl = new moodle_url('/local/dsp_certificates/index.php', array_filter([
+$csvUrl = new moodle_url('/local/dsp_certificates/index.php', array_filter([
     'userid'        => $userid,
-    'sourcetype'    => $sourcetype,
+    'sourcetype'    => $sourceType,
     'status'        => $status,
-    'expiresbefore' => $expiresbefore,
+    'expiresbefore' => $expiresBefore,
     'suspended'     => $suspended,
     'export'        => 'csv',
 ]));
 
-$templatecontext = [
-    'actionurl'       => $baseurl->out(false),
+$templateContext = [
+    'actionurl'       => $baseUrl->out(false),
     'sesskey'         => sesskey(),
 
     // Filter current values.
     'userid'          => $userid,
-    'sourcetype'      => $sourcetype,
+    'sourcetype'      => $sourceType,
     'status'          => $status,
-    'expiresbefore'   => $expiresbefore,
+    'expiresbefore'   => $expiresBefore,
     'suspended'       => $suspended,
 
     // Dropdown options.
     'sourcetypeopts'  => [
-        ['value' => '',              'label' => get_string('optionall',         'local_dsp_certificates'), 'selected' => $sourcetype === ''],
-        ['value' => 'course',        'label' => get_string('optioncourse',      'local_dsp_certificates'), 'selected' => $sourcetype === 'course'],
-        ['value' => 'certification', 'label' => get_string('optioncertification','local_dsp_certificates'),'selected' => $sourcetype === 'certification'],
+        ['value' => '',              'label' => get_string('optionall',         'local_dsp_certificates'), 'selected' => $sourceType === ''],
+        ['value' => 'course',        'label' => get_string('optioncourse',      'local_dsp_certificates'), 'selected' => $sourceType === 'course'],
+        ['value' => 'certification', 'label' => get_string('optioncertification','local_dsp_certificates'),'selected' => $sourceType === 'certification'],
     ],
     'statusopts'      => [
         ['value' => '',        'label' => get_string('optionall',     'local_dsp_certificates'), 'selected' => $status === ''],
@@ -211,12 +211,12 @@ $templatecontext = [
 
     // Results state.
     'hasresults'      => ($userid > 0),
-    'targetusername'  => $targetuser ? fullname($targetuser) : '',
-    'downloadurl'     => ($userid > 0) ? $downloadurl->out(false) : '',
-    'csvurl'          => ($userid > 0) ? $csvurl->out(false)      : '',
+    'targetusername'  => $targetUser ? fullname($targetUser) : '',
+    'downloadurl'     => ($userid > 0) ? $downloadUrl->out(false) : '',
+    'csvurl'          => ($userid > 0) ? $csvUrl->out(false)      : '',
 ];
 
-echo $OUTPUT->render_from_template('local_dsp_certificates/certificates_page', $templatecontext);
+echo $OUTPUT->render_from_template('local_dsp_certificates/certificates_page', $templateContext);
 
 // Render the table inside the results area if a user is selected.
 if ($userid > 0 && $table) {
