@@ -51,7 +51,5 @@ function local_dsp_certificates_extend_navigation(global_navigation $navigation)
         new pix_icon('i/report', '')
     );
 
-    $node->showinflatnavigation = true;
-
     $navigation->add_node($node);
 }

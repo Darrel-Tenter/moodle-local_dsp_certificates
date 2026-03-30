@@ -37,7 +37,7 @@ require_capability('local/dsp_certificates:view', $context);
 // ── Page setup ───────────────────────────────────────────────────────────────
 $PAGE->set_url(new moodle_url('/local/dsp_certificates/index.php'));
 $PAGE->set_context($context);
-$PAGE->set_pagelayout('standard');
+$PAGE->set_pagelayout('report');
 $PAGE->set_title(get_string('pagetitle', 'local_dsp_certificates'));
 $PAGE->set_heading(get_string('pageheading', 'local_dsp_certificates'));
 
@@ -134,12 +134,14 @@ if ($export === 'csv' && $userid > 0) {
 }
 
 // ── Build table (only when a user is selected) ────────────────────────────────
-$table       = null;
-$resultCount = 0;
+$tablehtml = '';
 
 if ($userid > 0) {
     $table = new certificates_table('dsp_certificates_table', $filters, $helper);
     $table->define_baseurl($PAGE->url);
+    ob_start();
+    $table->out(50, false);
+    $tablehtml = ob_get_clean();
 }
 
 // ── Output ────────────────────────────────────────────────────────────────────
@@ -214,17 +216,9 @@ $templateContext = [
     'targetusername'  => $targetUser ? fullname($targetUser) : '',
     'downloadurl'     => ($userid > 0) ? $downloadUrl->out(false) : '',
     'csvurl'          => ($userid > 0) ? $csvUrl->out(false)      : '',
+    'tablehtml'       => $tablehtml,
 ];
 
 echo $OUTPUT->render_from_template('local_dsp_certificates/certificates_page', $templateContext);
-
-// Render the table inside the results area if a user is selected.
-if ($userid > 0 && $table) {
-    // The table renders inside a div with id="dsp-cert-table-container"
-    // injected by the Mustache template.
-    echo \html_writer::start_div('', ['id' => 'dsp-cert-table-container']);
-    $table->out(50, false);
-    echo \html_writer::end_div();
-}
 
 echo $OUTPUT->footer();

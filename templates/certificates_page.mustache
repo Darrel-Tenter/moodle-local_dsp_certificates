@@ -124,8 +124,8 @@
         </div>
     </div>
 
-    {{! Table container — populated by PHP after this template renders }}
-    <div id="dsp-cert-table-container" class="table-responsive"></div>
+    {{! Table container — rendered by PHP via output buffering }}
+    <div id="dsp-cert-table-container" class="table-responsive">{{{tablehtml}}}</div>
 
 </div>
 {{/hasresults}}

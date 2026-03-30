@@ -129,18 +129,16 @@ define(['core/ajax', 'core/log'], function(Ajax, Log) {
         Ajax.call([{
             methodname: 'local_dsp_certificates_search_users',
             args: {query: query},
-            done: function(users) {
-                if (!users || users.length === 0) {
-                    closeDropdown(dropdown);
-                    return;
-                }
-                renderDropdown(dropdown, users, textInput, hiddenInput);
-            },
-            fail: function(err) {
-                Log.warn('local_dsp_certificates/filters: user search failed', err);
+        }])[0].then(function(users) {
+            if (!users || users.length === 0) {
                 closeDropdown(dropdown);
+                return;
             }
-        }]);
+            renderDropdown(dropdown, users, textInput, hiddenInput);
+        }).catch(function(err) {
+            Log.warn('local_dsp_certificates/filters: user search failed', err);
+            closeDropdown(dropdown);
+        });
     }
 
     /**
