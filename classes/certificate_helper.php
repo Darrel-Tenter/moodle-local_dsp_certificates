@@ -29,8 +29,9 @@ namespace local_dsp_certificates;
  * Provides data access methods for the DSP Certificate Lookup plugin.
  *
  * All queries are tenant-scoped: results are restricted to users within the
- * same tenant as the viewing admin. Tenant isolation is enforced via a join
- * on mdl_tool_tenant_user — never by PHP-level filtering.
+ * same tenant as the viewing admin. The viewer's tenant is resolved via the
+ * Workplace tenant API (\tool_tenant\tenancy) to correctly handle
+ * default-tenant membership.
  */
 class certificate_helper {
 
@@ -58,17 +59,14 @@ class certificate_helper {
     private function build_base_sql(array $filters): array {
         global $DB;
 
-        $params = ['viewerid' => $this->viewerId];
+        [$tenantjoin, $params] = self::tenant_sql($this->viewerId);
 
         // Core joins — always present.
         $fromSql = "
             {tool_certificate_issues} ci
             JOIN {tool_certificate_templates} tt ON tt.id = ci.templateid
             JOIN {user} u ON u.id = ci.userid
-            JOIN {tool_tenant_user} tu_user   ON tu_user.userid = u.id
-            JOIN {tool_tenant_user} tu_viewer
-                 ON tu_viewer.tenantid = tu_user.tenantid
-                AND tu_viewer.userid   = :viewerid
+            {$tenantjoin}
         ";
 
         $where = ["u.deleted = 0"];
@@ -223,21 +221,9 @@ class certificate_helper {
      * @return bool True if the user is in the viewer's tenant.
      */
     public function user_in_tenant(int $userid): bool {
-        global $DB;
-
-        $sql = "
-            SELECT 1
-              FROM {tool_tenant_user} tu_target
-              JOIN {tool_tenant_user} tu_viewer
-                   ON tu_viewer.tenantid = tu_target.tenantid
-                  AND tu_viewer.userid   = :viewerid
-             WHERE tu_target.userid = :userid
-        ";
-
-        return $DB->record_exists_sql($sql, [
-            'viewerid' => $this->viewerId,
-            'userid'   => $userid,
-        ]);
+        $viewertenantid = \tool_tenant\tenancy::get_tenant_id($this->viewerId);
+        $usertenantid   = \tool_tenant\tenancy::get_tenant_id($userid);
+        return $viewertenantid === $usertenantid;
     }
 
     /**
@@ -278,6 +264,25 @@ class certificate_helper {
     }
 
     /**
+     * Build the tenant-scoped JOIN fragment for a given viewer.
+     *
+     * Uses the Workplace tenant API to resolve the viewer's tenant,
+     * which correctly handles default-tenant users who may not have
+     * an explicit row in {tool_tenant_user}.
+     *
+     * @param int $viewerid The userid of the viewing admin.
+     * @return array [$joinsql, $params] A JOIN fragment and its bound params.
+     */
+    private static function tenant_sql(int $viewerid): array {
+        $tenantid = \tool_tenant\tenancy::get_tenant_id($viewerid);
+
+        $joinsql = "JOIN {tool_tenant_user} tu ON tu.userid = u.id AND tu.tenantid = :tenantid";
+        $params  = ['tenantid' => $tenantid];
+
+        return [$joinsql, $params];
+    }
+
+    /**
      * Fetch tenant users for the autocomplete selector.
      *
      * Results are cached per viewer for 5 minutes (see db/caches.php).
@@ -296,20 +301,19 @@ class certificate_helper {
             return $cached;
         }
 
+        [$tenantjoin, $tenantparams] = self::tenant_sql($this->viewerId);
+
         $sql = "
             SELECT u.id, u.firstname, u.lastname,
                    u.firstnamephonetic, u.lastnamephonetic,
                    u.middlename, u.alternatename
               FROM {user} u
-              JOIN {tool_tenant_user} tu_user   ON tu_user.userid = u.id
-              JOIN {tool_tenant_user} tu_viewer
-                   ON tu_viewer.tenantid = tu_user.tenantid
-                  AND tu_viewer.userid   = :viewerid
+                   {$tenantjoin}
              WHERE u.deleted = 0
           ORDER BY u.lastname, u.firstname
         ";
 
-        $records = $DB->get_records_sql($sql, ['viewerid' => $this->viewerId]);
+        $records = $DB->get_records_sql($sql, $tenantparams);
 
         $users = [];
         foreach ($records as $r) {
