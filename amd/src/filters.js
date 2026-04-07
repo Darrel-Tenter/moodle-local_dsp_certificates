@@ -77,7 +77,7 @@ define(['core/ajax', 'core/log'], function(Ajax, Log) {
             clearTimeout(debounceTimer);
 
             if (query.length < 1) {
-                closeDropdown(dropdown);
+                closeDropdown(dropdown, textInput);
                 return;
             }
 
@@ -90,7 +90,7 @@ define(['core/ajax', 'core/log'], function(Ajax, Log) {
         // Close dropdown on outside click.
         document.addEventListener('click', function(e) {
             if (!textInput.contains(e.target) && !dropdown.contains(e.target)) {
-                closeDropdown(dropdown);
+                closeDropdown(dropdown, textInput);
             }
         });
 
@@ -112,7 +112,7 @@ define(['core/ajax', 'core/log'], function(Ajax, Log) {
                 e.preventDefault();
                 active.click();
             } else if (e.key === 'Escape') {
-                closeDropdown(dropdown);
+                closeDropdown(dropdown, textInput);
             }
         });
     }
@@ -131,13 +131,14 @@ define(['core/ajax', 'core/log'], function(Ajax, Log) {
             args: {query: query},
         }])[0].then(function(users) {
             if (!users || users.length === 0) {
-                closeDropdown(dropdown);
+                closeDropdown(dropdown, textInput);
                 return;
             }
             renderDropdown(dropdown, users, textInput, hiddenInput);
         }).catch(function(err) {
-            Log.warn('local_dsp_certificates/filters: user search failed', err);
-            closeDropdown(dropdown);
+            var msg = (err && err.message) ? err.message : String(err);
+            Log.warn('local_dsp_certificates/filters: user search failed: ' + msg);
+            closeDropdown(dropdown, textInput);
         });
     }
 
@@ -158,18 +159,20 @@ define(['core/ajax', 'core/log'], function(Ajax, Log) {
             item.className   = 'dropdown-item';
             item.textContent = user.fullname;
             item.dataset.userid = user.id;
+            item.setAttribute('role', 'option');
 
             item.addEventListener('click', function() {
                 textInput.value   = user.fullname;
                 hiddenInput.value = user.id;
                 selectedUserId    = user.id;
-                closeDropdown(dropdown);
+                closeDropdown(dropdown, textInput);
             });
 
             dropdown.appendChild(item);
         });
 
         dropdown.style.display = 'block';
+        textInput.setAttribute('aria-expanded', 'true');
     }
 
     /**
@@ -177,9 +180,12 @@ define(['core/ajax', 'core/log'], function(Ajax, Log) {
      *
      * @param {HTMLElement} dropdown
      */
-    function closeDropdown(dropdown) {
+    function closeDropdown(dropdown, textInput) {
         dropdown.style.display = 'none';
         dropdown.innerHTML     = '';
+        if (textInput) {
+            textInput.setAttribute('aria-expanded', 'false');
+        }
     }
 
     /**

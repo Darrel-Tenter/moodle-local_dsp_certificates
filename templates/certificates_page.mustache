@@ -35,11 +35,15 @@
                         class="form-control form-control-sm"
                         autocomplete="off"
                         data-dsp-autocomplete="user"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                        aria-owns="dsp-cert-user-dropdown"
                         value=""
                         placeholder=""
                     >
                     {{! Autocomplete dropdown rendered by AMD module }}
-                    <div id="dsp-cert-user-dropdown" class="dropdown-menu w-100" style="display:none;max-height:220px;overflow-y:auto;"></div>
+                    <div id="dsp-cert-user-dropdown" class="dropdown-menu w-100" role="listbox" style="display:none;max-height:220px;overflow-y:auto;"></div>
                 </div>
 
                 {{! Source Type }}
