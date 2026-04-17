@@ -27,21 +27,26 @@
 
 namespace local_dsp_certificates\external;
 
+use core_external\external_api;
+use core_external\external_function_parameters;
+use core_external\external_multiple_structure;
+use core_external\external_single_structure;
+use core_external\external_value;
 use local_dsp_certificates\certificate_helper;
 
 /**
  * External function to search for tenant-scoped users for the certificate lookup autocomplete.
  */
-class search_users extends \core_external\external_api {
+class search_users extends external_api {
 
     /**
      * Describe input parameters.
      *
-     * @return \external_function_parameters
+     * @return external_function_parameters
      */
-    public static function execute_parameters(): \external_function_parameters {
-        return new \external_function_parameters([
-            'query' => new \external_value(PARAM_TEXT, 'Search string', VALUE_REQUIRED),
+    public static function execute_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'query' => new external_value(PARAM_TEXT, 'Search string', VALUE_REQUIRED),
         ]);
     }
 
@@ -85,13 +90,13 @@ class search_users extends \core_external\external_api {
     /**
      * Describe return value.
      *
-     * @return \external_multiple_structure
+     * @return external_multiple_structure
      */
-    public static function execute_returns(): \external_multiple_structure {
-        return new \external_multiple_structure(
-            new \external_single_structure([
-                'id'       => new \external_value(PARAM_INT,  'User ID'),
-                'fullname' => new \external_value(PARAM_TEXT, 'User full name'),
+    public static function execute_returns(): external_multiple_structure {
+        return new external_multiple_structure(
+            new external_single_structure([
+                'id'       => new external_value(PARAM_INT,  'User ID'),
+                'fullname' => new external_value(PARAM_TEXT, 'User full name'),
             ])
         );
     }
