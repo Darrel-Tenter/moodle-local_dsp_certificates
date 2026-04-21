@@ -133,7 +133,7 @@ class certificate_helper {
                     THEN JSON_UNQUOTE(JSON_EXTRACT(ci.data, '$.coursefullname'))
                 WHEN ci.component = 'tool_dynamicrule'
                     THEN JSON_UNQUOTE(JSON_EXTRACT(ci.data, '$.certificationname'))
-                ELSE tt.fullname
+                ELSE tt.name
             END
         ";
     }
@@ -170,7 +170,7 @@ class certificate_helper {
             ci.timecreated,
             ci.expires,
             ci.component,
-            tt.fullname AS templatename,
+            tt.name AS templatename,
             u.id        AS userid,
             u.firstname,
             u.lastname,
