@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/dsp_certificates/db" VERSION="20260223"
-    COMMENT="DSP Certificate Lookup — no custom tables; plugin reads from core Workplace tables."
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
-  <TABLES>
-  </TABLES>
-</XMLDB>
