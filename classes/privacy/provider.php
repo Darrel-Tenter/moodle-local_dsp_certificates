@@ -18,10 +18,10 @@
  * Privacy API provider for local_dsp_certificates.
  *
  * This plugin does not store any personal data of its own. It is a read-only
- * reporting tool that queries existing Moodle Workplace core tables
- * (tool_certificate_issues, tool_certificate_templates, user,
- * tool_tenant_user). All personal data displayed by this plugin is owned
- * and managed by the subsystems that store it.
+ * reporting tool that queries existing Moodle core tables
+ * (tool_certificate_issues, tool_certificate_templates, user) and MuTMS
+ * cohort tables (cohort_members). All personal data displayed by this plugin
+ * is owned and managed by the subsystems that store it.
  *
  * PDF files retrieved via the zip download endpoint are fetched from
  * Moodle's own pluginfile.php endpoint on the same server. No personal
@@ -39,7 +39,7 @@ namespace local_dsp_certificates\privacy;
  *
  * Implements \core_privacy\local\metadata\null_provider because:
  *  - The plugin creates no database tables of its own.
- *  - It reads only from core Moodle and Workplace tables whose privacy
+ *  - It reads only from core Moodle and MuTMS tables whose privacy
  *    is managed by those subsystems.
  *  - PDF downloads are retrieved from the local Moodle file store via
  *    pluginfile.php — no data leaves the Moodle instance.

@@ -1,6 +1,6 @@
 # DSP Certificate Lookup (`local_dsp_certificates`)
 
-A Moodle Workplace local plugin providing a compliance-optimized certificate lookup tool for Direct Support Learning (DSL) tenant administrators.
+A Moodle LMS local plugin (MuTMS multi-tenancy) providing a compliance-optimized certificate lookup tool for Direct Support Learning (DSL) tenant administrators.
 
 ---
 
@@ -24,11 +24,11 @@ This plugin is designed for use in Oregon I/DD provider agencies subject to ODDS
 
 | Requirement | Version |
 |---|---|
-| Moodle Workplace | 5.1.3+ |
+| Moodle LMS | 4.5+ |
+| MuTMS (`tool_mutenancy`) | Any |
+| DSL Tiers (`local_dsl_tiers`) | Any |
 | PHP | 8.3+ |
 | MySQL | 8.0+ (JSON_EXTRACT support required) |
-
-> **Note:** This plugin requires Moodle Workplace. It will not function on Moodle Core LMS due to its dependency on the `tool_tenant_user` multi-tenancy tables.
 
 ---
 
@@ -91,7 +91,7 @@ Moodle Workplace stores issued certificates in `mdl_tool_certificate_issues`. Th
 
 ### Tenant scoping
 
-All queries enforce tenant isolation via a join on `mdl_tool_tenant_user`. The viewing admin's tenant is derived at runtime from their session user ID — never from a URL parameter. A Tenant Admin can only ever retrieve records for users within their own tenant.
+All queries enforce tenant isolation via MuTMS cohort membership. The viewing admin's tenant ID is read from `$USER->tenantid` (set by MuTMS). The corresponding `cohort_id` is looked up from `mdl_tool_mutenancy_tenant`, and results are restricted to users in `mdl_cohort_members` with that cohort — never derived from a URL parameter. A Tenant Admin can only ever retrieve records for users within their own tenant.
 
 ### PDF download
 
@@ -114,7 +114,7 @@ LASTNAME_FIRSTNAME_SOURCENAME_DATEISSUED.pdf
 
 ## Privacy
 
-This plugin does not store any personal data. It is a read-only reporting tool that queries existing Moodle Workplace core tables (`tool_certificate_issues`, `tool_certificate_templates`, `user`, `tool_tenant_user`). All personal data displayed is owned and managed by those subsystems.
+This plugin does not store any personal data. It is a read-only reporting tool that queries Moodle core tables (`tool_certificate_issues`, `tool_certificate_templates`, `user`) and MuTMS cohort tables (`cohort_members`). All personal data displayed is owned and managed by those subsystems.
 
 Implements `\core_privacy\local\metadata\null_provider`.
 
@@ -159,7 +159,7 @@ A pre-built `amd/build/filters.min.js` is included in this repository for conven
 
 ## Development
 
-**Environment:** Moodle Workplace 5.1.3, PHP 8.3, MySQL 8.0
+**Environment:** Moodle LMS 4.5+, MuTMS, PHP 8.3, MySQL 8.0
 
 **Coding standards:** [Moodle coding style](https://moodledev.io/general/development/policies/codingstyle)
 

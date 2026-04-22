@@ -27,7 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Extend navigation with DSP Certificate Lookup link.
  *
- * Matches the pattern used by local_dsl_isp on this Workplace instance.
+ * Matches the pattern used by local_dsl_isp.
  *
  * @param global_navigation $navigation The global navigation object.
  */

@@ -29,9 +29,9 @@ namespace local_dsp_certificates;
  * Provides data access methods for the DSP Certificate Lookup plugin.
  *
  * All queries are tenant-scoped: results are restricted to users within the
- * same tenant as the viewing admin. The viewer's tenant is resolved via the
- * Workplace tenant API (\tool_tenant\tenancy) to correctly handle
- * default-tenant membership.
+ * same tenant as the viewing admin. Tenant membership is determined via
+ * MuTMS: the tenant's cohort_id is read from {tool_mutenancy_tenant}, then
+ * users are scoped via {cohort_members}.
  */
 class certificate_helper {
 
@@ -59,7 +59,7 @@ class certificate_helper {
     private function build_base_sql(array $filters): array {
         global $DB;
 
-        [$tenantjoin, $params] = self::tenant_sql($this->viewerId);
+        [$tenantjoin, $params] = $this->tenant_sql();
 
         // Core joins — always present.
         $fromSql = "
@@ -221,9 +221,15 @@ class certificate_helper {
      * @return bool True if the user is in the viewer's tenant.
      */
     public function user_in_tenant(int $userid): bool {
-        $viewertenantid = \tool_tenant\tenancy::get_tenant_id($this->viewerId);
-        $usertenantid   = \tool_tenant\tenancy::get_tenant_id($userid);
-        return $viewertenantid === $usertenantid;
+        global $DB;
+
+        $cohortid = $this->get_viewer_cohort_id();
+
+        if ($cohortid <= 0) {
+            return false;
+        }
+
+        return $DB->record_exists('cohort_members', ['cohortid' => $cohortid, 'userid' => $userid]);
     }
 
     /**
@@ -264,22 +270,48 @@ class certificate_helper {
     }
 
     /**
-     * Build the tenant-scoped JOIN fragment for a given viewer.
+     * Resolve the MuTMS cohort_id for the viewing admin's tenant.
      *
-     * Uses the Workplace tenant API to resolve the viewer's tenant,
-     * which correctly handles default-tenant users who may not have
-     * an explicit row in {tool_tenant_user}.
+     * Reads $USER->tenantid (set by MuTMS for tenanted users) and looks up the
+     * corresponding cohort_id from {tool_mutenancy_tenant}. Returns 0 for site
+     * admins or users with no tenant assignment.
      *
-     * @param int $viewerid The userid of the viewing admin.
+     * @return int The cohort_id, or 0 if the viewer has no tenant.
+     */
+    private function get_viewer_cohort_id(): int {
+        global $DB, $USER;
+
+        $tenantid = ($this->viewerId === (int)$USER->id && isset($USER->tenantid))
+            ? (int)$USER->tenantid
+            : 0;
+
+        if ($tenantid <= 0) {
+            return 0;
+        }
+
+        $rec = $DB->get_record('tool_mutenancy_tenant', ['id' => $tenantid], 'cohortid');
+        return $rec ? (int)$rec->cohortid : 0;
+    }
+
+    /**
+     * Build the tenant-scoped JOIN fragment for the viewer.
+     *
+     * Uses MuTMS cohort membership: the tenant's cohort_id is resolved via
+     * {tool_mutenancy_tenant}, then {cohort_members} is joined to identify
+     * users who belong to that tenant.
+     *
      * @return array [$joinsql, $params] A JOIN fragment and its bound params.
      */
-    private static function tenant_sql(int $viewerid): array {
-        $tenantid = \tool_tenant\tenancy::get_tenant_id($viewerid);
+    private function tenant_sql(): array {
+        $cohortid = $this->get_viewer_cohort_id();
 
-        $joinsql = "JOIN {tool_tenant_user} tu ON tu.userid = u.id AND tu.tenantid = :tenantid";
-        $params  = ['tenantid' => $tenantid];
+        if ($cohortid <= 0) {
+            // No tenant resolved — join on a false condition to return no rows.
+            return ["JOIN {cohort_members} cm ON cm.userid = u.id AND 1 = 0", []];
+        }
 
-        return [$joinsql, $params];
+        $joinsql = "JOIN {cohort_members} cm ON cm.userid = u.id AND cm.cohortid = :cohortid";
+        return [$joinsql, ['cohortid' => $cohortid]];
     }
 
     /**
@@ -301,7 +333,7 @@ class certificate_helper {
             return $cached;
         }
 
-        [$tenantjoin, $tenantparams] = self::tenant_sql($this->viewerId);
+        [$tenantjoin, $tenantparams] = $this->tenant_sql();
 
         $sql = "
             SELECT u.id, u.firstname, u.lastname,

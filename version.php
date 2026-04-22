@@ -25,10 +25,11 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_dsp_certificates';
-$plugin->version   = 2026040801;
-$plugin->requires  = 2024100700; // Moodle 4.5+ / Workplace 5.0+.
+$plugin->version   = 2026042201;
+$plugin->requires  = 2024100700; // Moodle 4.5+.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0.1';
+$plugin->release   = '2.0.0';
 $plugin->dependencies = [
-    'tool_tenant' => ANY_VERSION,
+    'tool_mutenancy'  => ANY_VERSION,  // MuTMS multi-tenancy — cohort-based tenant scoping.
+    'local_dsl_tiers' => ANY_VERSION,  // DSL tier gate.
 ];
