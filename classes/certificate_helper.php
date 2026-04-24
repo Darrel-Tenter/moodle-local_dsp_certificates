@@ -29,9 +29,9 @@ namespace local_dsp_certificates;
  * Provides data access methods for the DSP Certificate Lookup plugin.
  *
  * All queries are tenant-scoped: results are restricted to users within the
- * same tenant as the viewing admin. Tenant membership is determined via
- * MuTMS: the tenant's cohort_id is read from {tool_mutenancy_tenant}, then
- * users are scoped via {cohort_members}.
+ * same tenant as the viewing admin. The viewer's tenant is resolved via the
+ * Workplace tenant API (\tool_tenant\tenancy) which correctly handles
+ * default-tenant membership where no explicit {tool_tenant_user} row exists.
  */
 class certificate_helper {
 
@@ -54,7 +54,7 @@ class certificate_helper {
      * Callers add their own SELECT and additional WHERE conditions.
      *
      * @param array $filters Associative array of active filter values.
-     * @return array [$fromsql, $params]
+     * @return array [$fromsql, $whereSql, $params]
      */
     private function build_base_sql(array $filters): array {
         global $DB;
@@ -122,7 +122,7 @@ class certificate_helper {
      *
      * For course certificates: extracts $.coursefullname from the data column.
      * For certification certificates (issued by Dynamic Rules): extracts $.certificationname.
-     * Falls back to the template fullname for any other component.
+     * Falls back to the template name for any other component.
      *
      * @return string SQL fragment.
      */
@@ -186,7 +186,7 @@ class certificate_helper {
      * and pagination itself.
      *
      * @param array $filters Active filter values.
-     * @return array [$sql, $params]
+     * @return array [$fields, $fromSql, $whereSql, $params]
      */
     public function get_table_sql(array $filters): array {
         [$fromSql, $whereSql, $params] = $this->build_base_sql($filters);
@@ -214,22 +214,16 @@ class certificate_helper {
     /**
      * Confirm that a given userid belongs to the viewer's tenant.
      *
-     * Used to validate the userid param on index.php and download.php before
-     * running any queries with it.
+     * Uses the Workplace tenant API which correctly resolves default-tenant
+     * membership even when no explicit {tool_tenant_user} row exists.
      *
      * @param int $userid The userid to check.
      * @return bool True if the user is in the viewer's tenant.
      */
     public function user_in_tenant(int $userid): bool {
-        global $DB;
-
-        $cohortid = $this->get_viewer_cohort_id();
-
-        if ($cohortid <= 0) {
-            return false;
-        }
-
-        return $DB->record_exists('cohort_members', ['cohortid' => $cohortid, 'userid' => $userid]);
+        $viewerTenantId = \tool_tenant\tenancy::get_tenant_id($this->viewerId);
+        $userTenantId   = \tool_tenant\tenancy::get_tenant_id($userid);
+        return $viewerTenantId === $userTenantId;
     }
 
     /**
@@ -270,48 +264,21 @@ class certificate_helper {
     }
 
     /**
-     * Resolve the MuTMS cohort_id for the viewing admin's tenant.
-     *
-     * Reads $USER->tenantid (set by MuTMS for tenanted users) and looks up the
-     * corresponding cohort_id from {tool_mutenancy_tenant}. Returns 0 for site
-     * admins or users with no tenant assignment.
-     *
-     * @return int The cohort_id, or 0 if the viewer has no tenant.
-     */
-    private function get_viewer_cohort_id(): int {
-        global $DB, $USER;
-
-        $tenantid = ($this->viewerId === (int)$USER->id && isset($USER->tenantid))
-            ? (int)$USER->tenantid
-            : 0;
-
-        if ($tenantid <= 0) {
-            return 0;
-        }
-
-        $rec = $DB->get_record('tool_mutenancy_tenant', ['id' => $tenantid], 'cohortid');
-        return $rec ? (int)$rec->cohortid : 0;
-    }
-
-    /**
      * Build the tenant-scoped JOIN fragment for the viewer.
      *
-     * Uses MuTMS cohort membership: the tenant's cohort_id is resolved via
-     * {tool_mutenancy_tenant}, then {cohort_members} is joined to identify
-     * users who belong to that tenant.
+     * Uses the Workplace tenant API to resolve the viewer's tenant ID,
+     * which correctly handles default-tenant users who may not have an
+     * explicit row in {tool_tenant_user}.
      *
      * @return array [$joinsql, $params] A JOIN fragment and its bound params.
      */
     private function tenant_sql(): array {
-        $cohortid = $this->get_viewer_cohort_id();
+        $tenantId = \tool_tenant\tenancy::get_tenant_id($this->viewerId);
 
-        if ($cohortid <= 0) {
-            // No tenant resolved — join on a false condition to return no rows.
-            return ["JOIN {cohort_members} cm ON cm.userid = u.id AND 1 = 0", []];
-        }
+        $joinsql = "JOIN {tool_tenant_user} tu ON tu.userid = u.id AND tu.tenantid = :tenantid";
+        $params  = ['tenantid' => $tenantId];
 
-        $joinsql = "JOIN {cohort_members} cm ON cm.userid = u.id AND cm.cohortid = :cohortid";
-        return [$joinsql, ['cohortid' => $cohortid]];
+        return [$joinsql, $params];
     }
 
     /**
@@ -325,7 +292,7 @@ class certificate_helper {
     public function get_tenant_users(): array {
         global $DB;
 
-        $cache = \cache::make('local_dsp_certificates', 'tenant_users');
+        $cache    = \cache::make('local_dsp_certificates', 'tenant_users');
         $cacheKey = 'tenant_users_' . $this->viewerId;
 
         $cached = $cache->get($cacheKey);

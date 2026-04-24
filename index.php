@@ -34,11 +34,6 @@ require_login();
 $context = \core\context\system::instance();
 require_capability('local/dsp_certificates:view', $context);
 
-// ── Tier gate ─────────────────────────────────────────────────────────────────
-if (!\local_dsl_tiers\api::has_feature('local_dsp_certificates')) {
-    throw new \moodle_exception('tierrequired', 'local_dsl_tiers');
-}
-
 // ── Page setup ───────────────────────────────────────────────────────────────
 $PAGE->set_url(new moodle_url('/local/dsp_certificates/index.php'));
 $PAGE->set_context($context);
