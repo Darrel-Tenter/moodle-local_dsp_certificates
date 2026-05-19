@@ -68,6 +68,7 @@ $string['resultsfound']                 = '{$a} certificate(s) found';
 $string['sourcecertification']          = 'Certification';
 $string['sourcecourse']                 = 'Course';
 $string['sourceother']                  = 'Other';
+$string['sourcewaiver']                 = 'Track Waiver';
 $string['statusexpired']                = 'Expired';
 $string['statusnoexpiry']               = 'No Expiry';
 $string['statusvalid']                  = 'Valid';

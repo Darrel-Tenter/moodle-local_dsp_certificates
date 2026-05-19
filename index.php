@@ -147,9 +147,6 @@ if ($userid > 0) {
 // ── Output ────────────────────────────────────────────────────────────────────
 echo $OUTPUT->header();
 
-// Breadcrumb is set automatically from page layout; heading rendered here.
-echo $OUTPUT->heading(get_string('pageheading', 'local_dsp_certificates'));
-
 // ── Filter form ───────────────────────────────────────────────────────────────
 $baseUrl     = new moodle_url('/local/dsp_certificates/index.php');
 $downloadUrl = new moodle_url('/local/dsp_certificates/download.php', array_filter([

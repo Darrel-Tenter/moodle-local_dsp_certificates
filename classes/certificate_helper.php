@@ -133,6 +133,8 @@ class certificate_helper {
                     THEN JSON_UNQUOTE(JSON_EXTRACT(ci.data, '$.coursefullname'))
                 WHEN ci.component = 'tool_dynamicrule'
                     THEN JSON_UNQUOTE(JSON_EXTRACT(ci.data, '$.certificationname'))
+                WHEN ci.component = 'local_dsp_learning'
+                    THEN JSON_UNQUOTE(JSON_EXTRACT(ci.data, '$.trackname'))
                 ELSE tt.name
             END
         ";
@@ -153,6 +155,7 @@ class certificate_helper {
             CASE
                 WHEN ci.component = 'mod_coursecertificate' THEN 'course'
                 WHEN ci.component = 'tool_dynamicrule'      THEN 'certification'
+                WHEN ci.component = 'local_dsp_learning'    THEN 'waiver'
                 ELSE 'other'
             END
         ";
