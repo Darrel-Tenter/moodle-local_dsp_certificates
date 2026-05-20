@@ -1,12 +1,40 @@
 {{!
-    Template: local_dsp_certificates/certificates_page
-    Purpose:  Renders the filter form and results area for the DSP Certificate Lookup.
-              The table itself is rendered by PHP (certificates_table) and injected
-              into #dsp-cert-table-container by index.php after this template outputs.
+    @template local_dsp_certificates/certificates_page
 
-    @package  local_dsp_certificates
+    Context variables:
+    {
+        "actionurl": "string",
+        "sesskey": "string",
+        "userid": 0,
+        "sourcetype": "string",
+        "status": "string",
+        "expiresbefore": "string",
+        "suspended": "string",
+        "sourcetypeopts": [{"value": "string", "label": "string", "selected": false}],
+        "statusopts": [{"value": "string", "label": "string", "selected": false}],
+        "suspendedopts": [{"value": "string", "label": "string", "selected": false}],
+        "str_filtersheading": "string",
+        "str_staffmember": "string",
+        "str_sourcetype": "string",
+        "str_status": "string",
+        "str_expiresbefore": "string",
+        "str_suspended": "string",
+        "str_search": "string",
+        "str_clear": "string",
+        "str_downloadall": "string",
+        "str_exportcsv": "string",
+        "str_noselectuser": "string",
+        "str_noselectuserdesc": "string",
+        "hasresults": false,
+        "targetusername": "string",
+        "downloadurl": "string",
+        "csvurl": "string",
+        "tablehtml": "string"
+    }
+
+    @package   local_dsp_certificates
     @copyright 2026 Direct Support Learning
-    @license  http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 }}
 
 {{! ── Filter form ──────────────────────────────────────────────────────────── }}
